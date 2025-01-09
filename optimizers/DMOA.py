@@ -11,12 +11,6 @@
  #   [1] [https://ww2.mathworks.cn/matlabcentral/fileexchange/127309-improved-dwarf-mongoose-optimization-algorithm/?s_tid=mlc_lp_leafı]
 import numpy as np
 
-def roulette_wheel_selection(P):
-    """Roulette Wheel Selection for probabilities."""
-    r = np.random.rand()
-    C = np.cumsum(P)
-    i = np.where(r <= C)[0][0]
-    return i
 
 def DMOA(nPop, MaxIt, VarMin, VarMax, nVar, F_obj):
     """
@@ -31,10 +25,19 @@ def DMOA(nPop, MaxIt, VarMin, VarMax, nVar, F_obj):
          F_obj: function - Objective function to minimize.
 
      Returns:
-         BEF: float - Best fitness value found.
-         BEP: array - Best solution position.
-         BestCost: list - Convergence of best fitness values over iterations.
-     """
+         s: object - Solution object containing best fitness, position, and additional details.
+    """
+    import time
+    from solution import solution
+
+    # Helper function: Roulette Wheel Selection
+    def roulette_wheel_selection(P):
+        """Roulette Wheel Selection for probabilities."""
+        r = np.random.rand()
+        C = np.cumsum(P)
+        i = np.where(r <= C)[0][0]
+        return i
+
     # Validate Parameters
     if nPop <= 0:
         raise ValueError("Population size (nPop) must be greater than 0.")
@@ -53,6 +56,10 @@ def DMOA(nPop, MaxIt, VarMin, VarMax, nVar, F_obj):
     L = round(0.6 * nVar * nBabysitter)  # Babysitter exchange parameter
     peep = 2  # Alpha female's vocalization coefficient
 
+    # Initialize Solution Object
+    s = solution()
+    s.startTime = time.strftime("%Y-%m-%d-%H-%M-%S")
+
     # Initialize Population
     pop = [{'Position': np.random.uniform(VarMin, VarMax, VarSize), 'Cost': np.inf} for _ in range(nAlphaGroup)]
     for individual in pop:
@@ -68,7 +75,7 @@ def DMOA(nPop, MaxIt, VarMin, VarMax, nVar, F_obj):
     CF = (1 - 1 / MaxIt) ** (2 / MaxIt)  # Adaptation factor
 
     # Convergence Curve
-    BestCost = []
+    convergence_curve = np.zeros(MaxIt)
 
     # Main Loop
     for it in range(MaxIt):
@@ -127,26 +134,14 @@ def DMOA(nPop, MaxIt, VarMin, VarMax, nVar, F_obj):
         tau = newtau
 
         # Store Best Cost
-        BestCost.append(BestSol['Cost'])
-        print(f"Iteration {it + 1}: Best Cost = {BestSol['Cost']}")
+        convergence_curve[it] = BestSol['Cost']
+        print(f"At iteration {it + 1} the best fitness is {BestSol['Cost']}")
 
-    return BestSol['Cost'], BestSol['Position'], BestCost
+    timerEnd = time.time()
+    s.endTime = time.strftime("%Y-%m-%d-%H-%M-%S")
+    s.executionTime = timerEnd - time.mktime(time.strptime(s.startTime, "%Y-%m-%d-%H-%M-%S"))
+    s.convergence = convergence_curve
+    s.optimizer = "DMOA"
+    s.objfname = F_obj.__name__
 
-# Example Usage
-if __name__ == "__main__":
-    def sphere(x):
-        return np.sum(x ** 2)
-
-    nPop = 50
-    MaxIt = 100
-    VarMin = -10
-    VarMax = 10
-    nVar = 5
-
-    BEF, BEP, BestCost = DMOA(nPop, MaxIt, VarMin, VarMax, nVar, sphere)
-    print(f"Best Fitness Found: {BEF}")
-    print(f"Best Position Found: {BEP}")
-
-
-def optimizers():
-    return None
+    return s
